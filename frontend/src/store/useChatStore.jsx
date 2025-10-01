@@ -49,11 +49,11 @@ export const useChatStore = create((set,get) => ({
         if(!selectedUser) return;
 
         const socket = useAuthStore.getState().socket;
-
+        socket.off("newMessage");
         socket.on("newMessage", (newMessage) => {
             if (newMessage.senderId !== selectedUser._id) return;
             set({
-                message: {...get().message, newMessage},
+                messages: [...get().messages, newMessage],
             })
         })
     },

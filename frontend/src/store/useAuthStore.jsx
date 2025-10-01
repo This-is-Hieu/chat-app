@@ -79,24 +79,43 @@ export const useAuthStore = create((set,get) => ({
         }
     },
 
-    connectSocket: async() => {
-        const {authUser} = get();
-        if(!authUser || get.socket?.connected) return;
-        const socket = io(BASE_URL, {
-            query: {
-                userId : authUser._id,
-            },
-        });
-        socket.connect();
-        set({socket: socket });
-        socket.on("getOnlineUser",(userIds) => {
-            set({onlineUsers: userIds})
-        })
+    connectSocket: async () => {
+        const { authUser } = get();
+        if (!authUser || get().socket?.connected) return;
 
+        const socket = io(BASE_URL, {
+            query: { userId: authUser._id },
+        });
+
+        socket.connect();
+        set({ socket });
+
+        // Cập nhật danh sách online users
+        socket.on("getOnlineUser", (userIds) => {
+            set({ onlineUsers: userIds });
+        });
+
+        // Realtime khi có lời mời kết bạn mới
+        socket.on("friendRequestReceived", (requests) => {
+            set({ pendingRequests: requests });
+        });
+
+        // Realtime khi lời mời được chấp nhận
+        socket.on("friendRequestAccepted", (newFriend) => {
+            set((state) => ({ friends: [...state.friends, newFriend] }));
+        });
+
+        // Realtime khi bạn bị từ chối (nếu muốn)
+        socket.on("friendRequestDenied", (userId) => {
+            set((state) => ({
+                pendingRequests: state.pendingRequests.filter((id) => id !== userId)
+            }));
+        });
     },
 
-    disconnectSocket: async() => {
-        if(get.socket?.connected) get().socket.disconnect();
+    disconnectSocket: async () => {
+        if (get().socket?.connected) get().socket.disconnect();
+        set({ socket: null, onlineUsers: [], pendingRequests: [], friends: [] });
     }
-
+    
 }));
